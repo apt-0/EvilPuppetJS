@@ -40,7 +40,11 @@ const {
 } = require('./components/resourceProcessing')
 
 //setup puppeteer stealth instead of normal puppeteer to support more sites.
-puppeteer.use(pluginStealth());
+const stealth = pluginStealth()
+stealth.enabledEvasions.delete('iframe.contentWindow')
+stealth.enabledEvasions.delete('media.codecs')
+puppeteer.use(stealth)
+
 
 
 app.get('/', (req, res) => {
@@ -90,8 +94,9 @@ io.on('connection', async (socket) => {
         headless: false,
         executablePath: executablePath(),
         args: [
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
+            "--start-maximized",
+            "--no-sandbox",
+            "--disable-setuid-sandbox"
         ]
     });
     //close the puppeteer browser when disconnecting
