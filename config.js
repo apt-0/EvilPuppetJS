@@ -7,9 +7,6 @@ const PORT = 3000;
 
 const CONTENT_URL = `http://localhost:${PORT}/getContent?url=`;
 
-
-
-
 module.exports = {
     CACHED_RESOURCES_DIR,
     BASE_URL,
